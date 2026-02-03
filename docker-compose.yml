@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  transcript-service:
+    build: .
+    container_name: ytn-transcript
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    networks:
+      - self-hosted-ai-starter-kit_demo
+
+networks:
+  self-hosted-ai-starter-kit_demo:
+    external: true

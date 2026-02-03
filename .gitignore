@@ -1,0 +1,20 @@
+# Private/environment-specific docs
+README.spark.md
+README.private.md
+README.local.md
+
+# Backup files
+*.old
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+display_information:
+  name: YTN Summarizer
+  description: Summarize YouTube videos in Slack
+  background_color: "#ff0000"
+
+features:
+  bot_user:
+    display_name: YTN Bot
+    always_online: false
+  slash_commands:
+    - command: /ytsummary
+      url: https://YOUR-N8N-HOST/webhook/slack-ytn
+      description: Summarize a YouTube video
+      usage_hint: "<youtube-url>"
+      should_escape: false
+
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - chat:write
+
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

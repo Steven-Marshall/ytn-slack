@@ -1,0 +1,447 @@
+{
+  "name": "YouTube Slack Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-ytn",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7591fe4d-29e4-4201-9106-d3f059255c35",
+      "name": "Slack Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        0
+      ],
+      "webhookId": "slack-ytn"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Summarizing video... this may take a minute ⏳",
+        "options": {}
+      },
+      "id": "0dc281d2-fbfa-4aa5-8aaf-82fc5801ee11",
+      "name": "Ack Slack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "  const body = $input.first().json.body;\n  const text = body.text || '';\n\n  const urlPatterns = [\n    /https?:\\/\\/(?:www\\.)?youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /https?:\\/\\/youtu\\.be\\/([a-zA-Z0-9_-]{11})/\n  ];\n\n  let videoId = null;\n  for (const pattern of urlPatterns) {\n    const match = text.match(pattern);\n    if (match) {\n      videoId = match[1];\n      break;\n    }\n  }\n\n  return {\n    videoId,\n    channelId: body.channel_id,\n    responseUrl: body.response_url,\n    hasVideoId: !!videoId\n  };"
+      },
+      "id": "890e8f98-9d4f-4c4e-910f-d7482b1ab482",
+      "name": "Extract YouTube URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://ytn-transcript:5001/metadata?v={{ $json.videoId }}",
+        "options": {}
+      },
+      "id": "62251ac8-ee00-4cec-a01c-60d7c2d482ba",
+      "name": "Fetch Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        736,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://ytn-transcript:5001/transcript?v={{ $json.video_id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "db84b162-3bc9-49db-80fb-cc33fa091d82",
+      "name": "Fetch Transcript",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge metadata and transcript\nconst metadata = $('Fetch Metadata').first().json;\nconst transcript = $('Fetch Transcript').first().json;\nconst urlData = $('Extract YouTube URL').first().json;\n\nreturn {\n  videoId: metadata.video_id,\n  title: metadata.title,\n  channel: metadata.channel,\n  url: metadata.url,\n  transcript: transcript.transcript,\n  responseUrl: urlData.responseUrl\n};"
+      },
+      "id": "8686c9aa-24fc-46af-ac3b-dc14aae02904",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ollamaBody) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "5ee0678e-e649-47b0-97ed-a5268ecc9260",
+      "name": "Ollama Stage 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1632,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ollamaBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "59c53ca5-3e41-47d5-9e9d-f39bb0071cc9",
+      "name": "Ollama Stage 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final Slack message\nconst metadata = $('Merge Data').first().json;\nconst summary = $json.message.content;\n\nconst message = `*${metadata.title}*\\n_${metadata.channel}_\\n${metadata.url}\\n\\n${summary}`;\n\nreturn {\n  responseUrl: metadata.responseUrl,\n  message\n};"
+      },
+      "id": "befe7336-474c-42ae-8b89-da7baafc46b4",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.responseUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"response_type\": \"in_channel\",\n  \"text\": {{ JSON.stringify($json.message) }}\n}",
+        "options": {}
+      },
+      "id": "36272f97-d115-470b-8229-abba8b183219",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stage1Response = $json.message.content;\n  const metadata = $('Prepare Stage 1 Request').first().json;\n\n  const prompt = `Convert these notes into a Slack message. Requirements:\n  - Start with a one-sentence TLDR\n  - Follow with 3-4 bullet points (key takeaways)\n  - Keep total length under 300 words\n  - Use plain language, no jargon\n  - Add relevant emoji sparingly\n\n  Video: ${metadata.title}\n  Channel: ${metadata.channel}\n\n  NOTES:\n  ${stage1Response}`;\n\n  return {\n    title: metadata.title,\n    channel: metadata.channel,\n    url: metadata.url,\n    responseUrl: metadata.responseUrl,\n    ollamaBody: {\n      model: \"gpt-oss:20b-128k\",\n      messages: [{ role: \"user\", content: prompt }],\n      stream: false\n    }\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        0
+      ],
+      "id": "7a232e64-4a69-4aab-a211-c849d95d189b",
+      "name": "Prepare Stage 2 Request"
+    },
+    {
+      "parameters": {
+        "jsCode": " const transcript = $json.transcript.substring(0, 15000);\n  const prompt = `You are analyzing a YouTube video transcript. Extract the key information:\n\n  1. What is the main topic/thesis?\n  2. What are the 3-5 most important points or takeaways?\n  3. Any specific recommendations, tools, or actionable advice mentioned?\n\n  Be thorough but concise.\n\n  TRANSCRIPT:\n  ${transcript}`;\n\n  return {\n    title: $json.title,\n    channel: $json.channel,\n    url: $json.url,\n    responseUrl: $json.responseUrl,\n    ollamaBody: {\n      model: \"gpt-oss:20b-128k\",\n      messages: [{ role: \"user\", content: prompt }],\n      stream: false\n    }\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        0
+      ],
+      "id": "d5cb89e1-ca04-42a4-a23d-bd7792c652d8",
+      "name": "Prepare Stage 1 Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b7ac08c-34a0-434a-93ea-c0d616d73634",
+              "leftValue": "={{ $json.hasVideoId }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        0
+      ],
+      "id": "9e6cc6d0-0b3e-4855-bdbe-fd0ba48b4dee",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "https://slack.com/api/conversations.history",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=channel",
+              "value": "={{ $json.channelId }}"
+            },
+            {
+              "name": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        288,
+        80
+      ],
+      "id": "3fa17fcf-d826-4036-a510-fec2c4d6a8a6",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XCTc5A54hh6A4773",
+          "name": "Slack YTN Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": " const messages = $json.messages || [];\n  const inputData = $('Extract YouTube URL').first().json;\n\n  const urlPatterns = [\n    /https?:\\/\\/(?:www\\.)?youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /https?:\\/\\/youtu\\.be\\/([a-zA-Z0-9_-]{11})/\n  ];\n\n  let videoId = null;\n\n  for (const msg of messages) {\n    const text = msg.text || '';\n    for (const pattern of urlPatterns) {\n      const match = text.match(pattern);\n      if (match) {\n        videoId = match[1];\n        break;\n      }\n    }\n    if (videoId) break;\n  }\n\n  if (!videoId) {\n    throw new Error('No YouTube URL found in recent channel messages');\n  }\n\n  return {\n    videoId,\n    channelId: inputData.channelId,\n    responseUrl: inputData.responseUrl\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        80
+      ],
+      "id": "a244fb5f-5e17-4ac1-890c-f9ccdaf124d3",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Slack Webhook": {
+      "main": [
+        [
+          {
+            "node": "Ack Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ack Slack": {
+      "main": [
+        [
+          {
+            "node": "Extract YouTube URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract YouTube URL": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Metadata": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Stage 1 Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Stage 1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Stage 2 Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Stage 2": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Stage 2 Request": {
+      "main": [
+        [
+          {
+            "node": "Ollama Stage 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Stage 1 Request": {
+      "main": [
+        [
+          {
+            "node": "Ollama Stage 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Fetch Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Fetch Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2c336b8a-3ffb-4eae-a49b-984c64e2ad2b",
+  "meta": {
+    "instanceId": "02f602d75e9bd6345b60401e01d68d00be30e851bd50e3f1ff98c20f221e5312"
+  },
+  "id": "tgZ3UmUtNPvjm1dx",
+  "tags": []
+}
