@@ -8,13 +8,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "2601a23f-432c-45ce-9ec2-dc0704ad371c",
+      "id": "7591fe4d-29e4-4201-9106-d3f059255c35",
       "name": "Slack Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -2304,
-        352
+        -608,
+        0
       ],
       "webhookId": "slack-ytn"
     },
@@ -24,26 +24,26 @@
         "responseBody": "Summarizing video... this may take a minute ⏳",
         "options": {}
       },
-      "id": "ffccefa6-fd19-4e28-9633-3d6b75ce7f64",
+      "id": "0dc281d2-fbfa-4aa5-8aaf-82fc5801ee11",
       "name": "Ack Slack",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        -2080,
-        352
+        -384,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "  const body = $input.first().json.body;\n  const text = body.text || '';\n\n  const urlPatterns = [\n    /https?:\\/\\/(?:www\\.)?youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /https?:\\/\\/youtu\\.be\\/([a-zA-Z0-9_-]{11})/\n  ];\n\n  let videoId = null;\n  for (const pattern of urlPatterns) {\n    const match = text.match(pattern);\n    if (match) {\n      videoId = match[1];\n      break;\n    }\n  }\n\n  return {\n    videoId,\n    channelId: body.channel_id,\n    responseUrl: body.response_url,\n    hasVideoId: !!videoId\n  };"
       },
-      "id": "e7b1f042-fde7-499f-961c-8ca0036170e4",
+      "id": "890e8f98-9d4f-4c4e-910f-d7482b1ab482",
       "name": "Extract YouTube URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1856,
-        352
+        -160,
+        0
       ]
     },
     {
@@ -51,15 +51,14 @@
         "url": "=http://ytn-transcript:5001/metadata?v={{ $json.videoId }}",
         "options": {}
       },
-      "id": "cb8b951d-5ee5-472f-b91d-6e4391d9f9ff",
+      "id": "62251ac8-ee00-4cec-a01c-60d7c2d482ba",
       "name": "Fetch Metadata",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -960,
-        352
-      ],
-      "onError": "continueErrorOutput"
+        736,
+        0
+      ]
     },
     {
       "parameters": {
@@ -68,13 +67,13 @@
           "timeout": 30000
         }
       },
-      "id": "a8b4239a-c4cd-46e1-9839-28c5ff6fe525",
+      "id": "db84b162-3bc9-49db-80fb-cc33fa091d82",
       "name": "Fetch Transcript",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -736,
-        256
+        960,
+        0
       ],
       "onError": "continueErrorOutput"
     },
@@ -82,26 +81,44 @@
       "parameters": {
         "jsCode": "const urlData = $('Extract YouTube URL').first().json;\nconst errorMsg = `⚠️ *Transcript fetch failed*\\nCouldn't get transcript for this video. It may be private, age-restricted, or have no captions available.`;\n\nreturn {\n  responseUrl: urlData.responseUrl,\n  message: errorMsg\n};"
       },
-      "id": "f7af8b4a-4018-4635-b9f5-0cd672b01a04",
+      "id": "a1b2c3d4-error-transcript-handler",
       "name": "Error: Transcript Failed",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        608,
-        544
+        960,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.responseUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"response_type\": \"ephemeral\",\n  \"text\": {{ JSON.stringify($json.message) }}\n}",
+        "options": {}
+      },
+      "id": "e5f6g7h8-error-transcript-slack",
+      "name": "Post Transcript Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        240
       ]
     },
     {
       "parameters": {
         "jsCode": "// Merge metadata and transcript\nconst metadata = $('Fetch Metadata').first().json;\nconst transcript = $('Fetch Transcript').first().json;\nconst urlData = $('Extract YouTube URL').first().json;\n\nreturn {\n  videoId: metadata.video_id,\n  title: metadata.title,\n  channel: metadata.channel,\n  url: metadata.url,\n  transcript: transcript.transcript,\n  responseUrl: urlData.responseUrl\n};"
       },
-      "id": "9bca2213-a8d9-4784-9011-047038ee3b17",
+      "id": "8686c9aa-24fc-46af-ac3b-dc14aae02904",
       "name": "Merge Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -512,
-        160
+        1184,
+        0
       ]
     },
     {
@@ -115,15 +132,14 @@
           "timeout": 120000
         }
       },
-      "id": "6a780c3c-ae49-4451-bd42-bd0bec3931f6",
+      "id": "5ee0678e-e649-47b0-97ed-a5268ecc9260",
       "name": "Ollama Stage 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -64,
-        160
-      ],
-      "onError": "continueErrorOutput"
+        1632,
+        0
+      ]
     },
     {
       "parameters": {
@@ -136,27 +152,26 @@
           "timeout": 60000
         }
       },
-      "id": "8cc2725a-e877-496c-9339-a6f59816345a",
+      "id": "59c53ca5-3e41-47d5-9e9d-f39bb0071cc9",
       "name": "Ollama Stage 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        384,
-        64
-      ],
-      "onError": "continueErrorOutput"
+        2080,
+        0
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Format final Slack message\nconst metadata = $('Merge Data').first().json;\nconst summary = $json.message.content;\n\nconst message = `*${metadata.title}*\\n_${metadata.channel}_\\n${metadata.url}\\n\\n${summary}`;\n\nreturn {\n  responseUrl: metadata.responseUrl,\n  message\n};"
       },
-      "id": "e6b6e1e9-321a-437d-aaf5-3f148e726b80",
+      "id": "befe7336-474c-42ae-8b89-da7baafc46b4",
       "name": "Format Slack Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        608,
-        -32
+        2304,
+        0
       ]
     },
     {
@@ -168,13 +183,13 @@
         "jsonBody": "={\n  \"response_type\": \"in_channel\",\n  \"text\": {{ JSON.stringify($json.message) }}\n}",
         "options": {}
       },
-      "id": "f506d6c3-2acc-424f-9831-8c79988ecece",
+      "id": "36272f97-d115-470b-8229-abba8b183219",
       "name": "Post to Slack",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        832,
-        -32
+        2528,
+        0
       ]
     },
     {
@@ -184,10 +199,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        64
+        1856,
+        0
       ],
-      "id": "dc5d0654-b5cf-4dcf-bda1-3ccbe9de69d7",
+      "id": "7a232e64-4a69-4aab-a211-c849d95d189b",
       "name": "Prepare Stage 2 Request"
     },
     {
@@ -197,10 +212,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -288,
-        160
+        1408,
+        0
       ],
-      "id": "0d6af866-d4b5-4527-a0f9-6ab1e04fe034",
+      "id": "d5cb89e1-ca04-42a4-a23d-bd7792c652d8",
       "name": "Prepare Stage 1 Request"
     },
     {
@@ -232,10 +247,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1632,
-        352
+        64,
+        0
       ],
-      "id": "29ed546c-0b59-412a-98e5-67a71471eafc",
+      "id": "9e6cc6d0-0b3e-4855-bdbe-fd0ba48b4dee",
       "name": "If"
     },
     {
@@ -261,10 +276,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        -1408,
-        432
+        288,
+        80
       ],
-      "id": "39d04633-a7d4-4a7d-8b23-85691d2c49fd",
+      "id": "3fa17fcf-d826-4036-a510-fec2c4d6a8a6",
       "name": "HTTP Request",
       "credentials": {
         "httpHeaderAuth": {
@@ -280,68 +295,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1184,
-        432
+        512,
+        80
       ],
-      "id": "db83376c-8f4c-4645-bcd1-20960a7ac1f6",
+      "id": "a244fb5f-5e17-4ac1-890c-f9ccdaf124d3",
       "name": "Code in JavaScript"
-    },
-    {
-      "parameters": {
-        "jsCode": "const urlData = $('Extract YouTube URL').first().json;\nconst errorMsg = `⚠️ *Metadata fetch failed*\\nCouldn't get metadata for this video.`;\n\nreturn {\n  responseUrl: urlData.responseUrl,\n  message: errorMsg\n};"
-      },
-      "id": "b3cac708-c1ad-445c-abba-fb333327b5bc",
-      "name": "Error: Metadata Failed",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        608,
-        736
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const urlData = $('Extract YouTube URL').first().json;\nconst errorMsg = `⚠️ *First Summarization failed*\\nThere may be issues accessing your AI model`;\n\nreturn {\n  responseUrl: urlData.responseUrl,\n  message: errorMsg\n};"
-      },
-      "id": "e93fc7e8-b040-4efe-816e-e9fa8a595b50",
-      "name": "Error: Ollama Stage 1 Failed",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        608,
-        352
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const urlData = $('Extract YouTube URL').first().json;\nconst errorMsg = `⚠️ *Final Summarization failed*\\nThere may be issues accessing your AI model`;\n\nreturn {\n  responseUrl: urlData.responseUrl,\n  message: errorMsg\n};"
-      },
-      "id": "a0a16429-4e76-47fe-94de-cf193380ca7e",
-      "name": "Error: Ollama Stage 2 Failed",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        608,
-        160
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $json.responseUrl }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"response_type\": \"ephemeral\",\n  \"text\": {{ JSON.stringify($json.message) }}\n}",
-        "options": {}
-      },
-      "id": "b5cbadb6-8ecc-4f7c-a2bd-4b6df5fc9f45",
-      "name": "Error Processing",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        832,
-        448
-      ]
     }
   ],
   "pinData": {},
@@ -387,13 +345,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Error: Metadata Failed",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -419,7 +370,7 @@
       "main": [
         [
           {
-            "node": "Error Processing",
+            "node": "Post Transcript Error",
             "type": "main",
             "index": 0
           }
@@ -445,13 +396,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Error: Ollama Stage 1 Failed",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -460,13 +404,6 @@
         [
           {
             "node": "Format Slack Message",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Error: Ollama Stage 2 Failed",
             "type": "main",
             "index": 0
           }
@@ -545,46 +482,13 @@
           }
         ]
       ]
-    },
-    "Error: Metadata Failed": {
-      "main": [
-        [
-          {
-            "node": "Error Processing",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Error: Ollama Stage 1 Failed": {
-      "main": [
-        [
-          {
-            "node": "Error Processing",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Error: Ollama Stage 2 Failed": {
-      "main": [
-        [
-          {
-            "node": "Error Processing",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "d82f01e5-881a-422f-b86e-ba9221b4ed8a",
+  "versionId": "2c336b8a-3ffb-4eae-a49b-984c64e2ad2b",
   "meta": {
     "instanceId": "02f602d75e9bd6345b60401e01d68d00be30e851bd50e3f1ff98c20f221e5312"
   },
