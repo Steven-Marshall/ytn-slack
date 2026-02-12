@@ -284,7 +284,8 @@
         432
       ],
       "id": "db83376c-8f4c-4645-bcd1-20960a7ac1f6",
-      "name": "Code in JavaScript"
+      "name": "Code in JavaScript",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -341,6 +342,19 @@
       "position": [
         832,
         448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const urlData = $('Extract YouTube URL').first().json;\nconst errorMsg = `⚠️ *Couldn't find URL*\\nMake sure bot is invited into channel.`;\n\nreturn {\n  responseUrl: urlData.responseUrl,\n  message: errorMsg\n};"
+      },
+      "id": "72d49fc2-28e7-483f-abd6-c931218550ab",
+      "name": "Error: No URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        912
       ]
     }
   ],
@@ -543,6 +557,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Error: No URL",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -578,13 +599,24 @@
           }
         ]
       ]
+    },
+    "Error: No URL": {
+      "main": [
+        [
+          {
+            "node": "Error Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "d82f01e5-881a-422f-b86e-ba9221b4ed8a",
+  "versionId": "d238efcb-d029-4db6-b377-1de8a930d191",
   "meta": {
     "instanceId": "02f602d75e9bd6345b60401e01d68d00be30e851bd50e3f1ff98c20f221e5312"
   },
