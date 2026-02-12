@@ -19,9 +19,21 @@ User → Slack → n8n webhook → transcript-service → Ollama → Slack respo
 ## Usage
 
 ```
-/ytsummary                              # Summarizes most recent YouTube video in channel
-/ytsummary <https://youtube.com/...>    # Summarizes specific video (use angle brackets)
+/ytsummary                              # Short summary of most recent YouTube video in channel
+/ytsummary <https://youtube.com/...>    # Short summary of specific video
+/ytsummary <https://youtube.com/...> medium   # Medium-detail summary
+/ytsummary <https://youtube.com/...> long     # Comprehensive section-by-section breakdown
+/ytsummary medium                       # Medium summary of most recent video in channel
+/ytsummary long                         # Long summary of most recent video in channel
 ```
+
+### Summary Levels
+
+| Level | Output | Details |
+|-------|--------|---------|
+| `short` (default) | TLDR + 3-4 bullets | Under 300 words. Uses first 15k chars of transcript. |
+| `medium` | TLDR + 5-8 detailed bullets | 300-800 words. Uses up to 50% of transcript (cap 40k chars). |
+| `long` | TLDR + sectioned breakdown | 500-1500 words. Uses full transcript (cap 80k chars). |
 
 **Note:** Slack unfurls (expands) URLs automatically. To pass a URL directly, wrap it in angle brackets `<url>` to prevent unfurling.
 
