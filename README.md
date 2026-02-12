@@ -31,9 +31,11 @@ User → Slack → n8n webhook → transcript-service → Ollama → Slack respo
 
 | Level | Output | Details |
 |-------|--------|---------|
-| `short` (default) | TLDR + 3-4 bullets | Under 300 words. Uses first 15k chars of transcript. |
-| `medium` | TLDR + 5-8 detailed bullets | 300-800 words. Uses up to 50% of transcript (cap 40k chars). |
-| `long` | TLDR + sectioned breakdown | 500-1500 words. Uses full transcript (cap 80k chars). |
+| `short` (default) | TLDR + 3-4 bullets | Under 300 words |
+| `medium` | TLDR + 5-8 detailed bullets | 300-800 words |
+| `long` | TLDR + sectioned breakdown | 500-1500 words |
+
+All levels use the full transcript. The 2-stage Ollama pipeline compresses the full video into key notes (Stage 1), then formats for Slack at the requested detail level (Stage 2).
 
 **Note:** Slack unfurls (expands) URLs automatically. To pass a URL directly, wrap it in angle brackets `<url>` to prevent unfurling.
 
